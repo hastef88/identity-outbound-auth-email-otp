@@ -92,10 +92,14 @@ public class EmailOTPAuthenticator extends OpenIDConnectAuthenticator implements
         if (log.isDebugEnabled()) {
             log.debug("Inside EmailOTPAuthenticator canHandle method");
         }
-        return ((StringUtils.isNotEmpty(request.getParameter(EmailOTPAuthenticatorConstants.RESEND))
-                && StringUtils.isEmpty(request.getParameter(EmailOTPAuthenticatorConstants.CODE)))
+        return (
+                (
+                StringUtils.isNotEmpty(request.getParameter(EmailOTPAuthenticatorConstants.RESEND))
+                && StringUtils.isEmpty(request.getParameter(EmailOTPAuthenticatorConstants.CODE))
+        )
                 || StringUtils.isNotEmpty(request.getParameter(EmailOTPAuthenticatorConstants.CODE))
-                || StringUtils.isNotEmpty(request.getParameter(EmailOTPAuthenticatorConstants.EMAIL_ADDRESS)));
+                || StringUtils.isNotEmpty(request.getParameter(EmailOTPAuthenticatorConstants.EMAIL_ADDRESS))
+        );
     }
 
     @Override
@@ -110,7 +114,9 @@ public class EmailOTPAuthenticator extends OpenIDConnectAuthenticator implements
             // if the request comes with EMAIL ADDRESS, it will go through this flow.
             initiateAuthenticationRequest(request, response, context);
             return AuthenticatorFlowStatus.INCOMPLETE;
-        } else if (StringUtils.isEmpty(request.getParameter(EmailOTPAuthenticatorConstants.CODE))) {
+        } else if (StringUtils.isEmpty(request.getParameter(EmailOTPAuthenticatorConstants.CODE)) &&
+                (StringUtils.isEmpty(request.getParameter(EmailOTPAuthenticatorConstants.RESEND)) ||
+                        !Boolean.parseBoolean(request.getParameter(EmailOTPAuthenticatorConstants.RESEND)) )) {
             // if the request comes with code, it will go through this flow.
             initiateAuthenticationRequest(request, response, context);
             if (context.getProperty(EmailOTPAuthenticatorConstants.AUTHENTICATION)
@@ -258,7 +264,7 @@ public class EmailOTPAuthenticator extends OpenIDConnectAuthenticator implements
                                         Map<String, String> authenticatorProperties, String email, String username,
                                         String myToken) throws AuthenticationFailedException {
         if (isSMTP(authenticatorProperties, emailOTPParameters, context)) {
-            sendOTP(username, myToken, email);
+            sendOTP(username, myToken, email, context);
         } else if (StringUtils.isNotEmpty(email)) {
             authenticatorProperties = getAuthenticatorPropertiesWithTokenResponse(context, emailOTPParameters,
                     authenticatorProperties);
@@ -1415,7 +1421,7 @@ public class EmailOTPAuthenticator extends OpenIDConnectAuthenticator implements
      * @param email the email address to send otp
      * @throws AuthenticationFailedException
      */
-    private void sendOTP(String username, String otp, String email) throws AuthenticationFailedException {
+    private void sendOTP(String username, String otp, String email, AuthenticationContext context) throws AuthenticationFailedException {
         System.setProperty(EmailOTPAuthenticatorConstants.AXIS2, EmailOTPAuthenticatorConstants.AXIS2_FILE);
         try {
             ConfigurationContext configurationContext =
@@ -1441,6 +1447,9 @@ public class EmailOTPAuthenticator extends OpenIDConnectAuthenticator implements
                             + username, e);
                 }
                 emailNotificationData.setTagData(EmailOTPAuthenticatorConstants.CODE, otp);
+                emailNotificationData.setTagData(EmailOTPAuthenticatorConstants.APPLICATION_NAME, context.getServiceProviderName());
+                emailNotificationData.setTagData(EmailOTPAuthenticatorConstants.USER_NAME, username.replace("@carbon.super", ""));
+
                 emailNotificationData.setSendTo(email);
                 if (config.getProperties().containsKey(EmailOTPAuthenticatorConstants.AUTHENTICATOR_NAME)) {
                     emailTemplate = config.getProperty(EmailOTPAuthenticatorConstants.AUTHENTICATOR_NAME);

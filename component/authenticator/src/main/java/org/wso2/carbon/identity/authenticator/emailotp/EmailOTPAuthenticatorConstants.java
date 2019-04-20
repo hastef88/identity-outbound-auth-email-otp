@@ -106,4 +106,5 @@ public class EmailOTPAuthenticatorConstants {
 
     public static final String SCREEN_VALUE = "&screenValue=";
     public static final String SHOW_EMAIL_ADDRESS_IN_UI = "showEmailAddressInUI";
+    public static final String APPLICATION_NAME = "ApplicationName";
 }
